@@ -1,15 +1,21 @@
 package code.android.bill.purchases.main.ui.main
 
-import androidx.lifecycle.ViewModelProviders
 import android.content.Intent
 import android.os.Bundle
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Toast
+import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import code.android.bill.purchases.R
+import code.android.bill.purchases.base.entity.AugmentedSkuDetails
+import code.android.bill.purchases.base.extension.nonNullSingle
 import code.android.bill.purchases.base.ui.BaseActivity
+import code.android.bill.purchases.databinding.ActivityMainBinding
+import code.android.bill.purchases.main.ui.history.HistoryActivity
 import com.android.billingclient.api.BillingClient
 
 
@@ -19,17 +25,16 @@ class MainActivity : BaseActivity(), ProductAdapter.ProductListener {
         private val TAG = MainActivity::class.java.simpleName
     }
 
-    override val layoutResource: Int
-        get() = R.layout.activity_main
-
     private lateinit var mViewModel: MainViewModel
 
     private val mProductAdapter = ProductAdapter(this)
 
     override fun initComponent(savedInstanceState: Bundle?) {
-        mViewModel = ViewModelProviders.of(this).get(MainViewModel::class.java)
+        val binding: ActivityMainBinding =
+            DataBindingUtil.setContentView(this, R.layout.activity_main);
+        mViewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
-        recyclerSkuDetails.apply {
+        binding.recyclerSkuDetails.apply {
             adapter = mProductAdapter
             layoutManager = LinearLayoutManager(
                 applicationContext,
@@ -39,25 +44,25 @@ class MainActivity : BaseActivity(), ProductAdapter.ProductListener {
         }
 
         mViewModel.getSkuDetails()
-                .nonNullSingle()
-                .observe(this) {
-                    Log.d(TAG, "AugmentedSkuDetails: $it")
-                    mProductAdapter.submitList(it)
-                    recyclerSkuDetails.scrollToPosition(0)
-                }
+            .nonNullSingle()
+            .observe(this) {
+                Log.d(TAG, "AugmentedSkuDetails: $it")
+                mProductAdapter.submitList(it)
+                binding.recyclerSkuDetails.scrollToPosition(0)
+            }
 
         mViewModel.getLoadRewardResponse()
-                .nonNullSingle()
-                .observe(this) {
-                    when (it.responseCode) {
-                        BillingClient.BillingResponseCode.OK -> {
-                            Log.d(TAG, "getLoadRewardResponse(): OK")
-                        }
-                        else -> {
-                            Log.d(TAG, "getLoadRewardResponse(): ${it.debugMessage}")
-                        }
+            .nonNullSingle()
+            .observe(this) {
+                when (it.responseCode) {
+                    BillingClient.BillingResponseCode.OK -> {
+                        Log.d(TAG, "getLoadRewardResponse(): OK")
+                    }
+                    else -> {
+                        Log.d(TAG, "getLoadRewardResponse(): ${it.debugMessage}")
                     }
                 }
+            }
     }
 
     override fun onStart() {
@@ -70,8 +75,8 @@ class MainActivity : BaseActivity(), ProductAdapter.ProductListener {
         return true
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        when (item?.itemId) {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
             R.id.menu_history -> {
                 startActivity(Intent(this, HistoryActivity::class.java))
             }

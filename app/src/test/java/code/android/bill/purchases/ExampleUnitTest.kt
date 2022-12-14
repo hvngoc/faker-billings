@@ -1,4 +1,4 @@
-package code.android.bill.inapppurchases
+package code.android.bill.purchases
 
 import org.junit.Test
 

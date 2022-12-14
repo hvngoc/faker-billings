@@ -12,12 +12,12 @@ import com.android.billingclient.api.PurchaseHistoryRecord
 class HistoryAdapter : ListBoundAdapter<PurchaseHistoryRecord>(HistoryRecordDiffCallback()) {
 
     override fun inflateView(parent: ViewGroup, viewType: Int?): View {
-        return LayoutInflater.from(parent.context).inflate(R.layout.item_history, parent, false)
+        return TextView(parent.context);// LayoutInflater.from(parent.context).inflate(R.layout.item_history, parent, false)
     }
 
     override fun bind(rootView: View, item: PurchaseHistoryRecord) {
-        rootView.findViewById<TextView>(R.id.textTitle).text = item.sku
-        rootView.textTime.text = "Time purchase: ${convertDate(item.purchaseTime)}"
+//        rootView.findViewById<TextView>(R.id.textTitle).text = item.sku
+//        rootView.textTime.text = "Time purchase: ${convertDate(item.purchaseTime)}"
     }
 
     private fun convertDate(timeMilliseconds: Long): String {
@@ -30,7 +30,7 @@ class HistoryAdapter : ListBoundAdapter<PurchaseHistoryRecord>(HistoryRecordDiff
         }
 
         override fun areItemsTheSame(oldItem: PurchaseHistoryRecord, newItem: PurchaseHistoryRecord): Boolean {
-            return oldItem.sku == newItem.sku
+            return false
         }
     }
 }

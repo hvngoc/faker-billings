@@ -1,13 +1,16 @@
 package code.android.bill.purchases.main.ui.history
 
-import androidx.lifecycle.ViewModelProviders
 import android.os.Bundle
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import android.util.Log
 import android.view.MenuItem
+import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.ViewModelProviders
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import code.android.bill.purchases.R
 import code.android.bill.purchases.base.extension.nonNullSingle
 import code.android.bill.purchases.base.ui.BaseActivity
+import code.android.bill.purchases.databinding.ActivityHistoryBinding
 
 class HistoryActivity : BaseActivity() {
 
@@ -15,20 +18,19 @@ class HistoryActivity : BaseActivity() {
         private val TAG = HistoryActivity::class.java.simpleName
     }
 
-    override val layoutResource: Int
-        get() = R.layout.activity_history
-
     private lateinit var mViewModel: HistoryViewModel
 
     private val mHistoryAdapter = HistoryAdapter()
 
     override fun initComponent(savedInstanceState: Bundle?) {
+        val binding: ActivityHistoryBinding =
+            DataBindingUtil.setContentView(this, R.layout.activity_history)
         mViewModel = ViewModelProviders.of(this).get(HistoryViewModel::class.java)
 
         supportActionBar?.title = "History Purchase"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        recyclerRecord.apply {
+        binding.recyclerRecord.apply {
             adapter = mHistoryAdapter
             layoutManager = LinearLayoutManager(
                 applicationContext,
@@ -38,15 +40,15 @@ class HistoryActivity : BaseActivity() {
         }
 
         mViewModel.getPurchaseHistoryRecord()
-                .nonNullSingle()
-                .observe(this) {
-                    Log.d(TAG, "Purchase record $it")
-                    mHistoryAdapter.submitList(it)
-                }
+            .nonNullSingle()
+            .observe(this) {
+                Log.d(TAG, "Purchase record $it")
+                mHistoryAdapter.submitList(it)
+            }
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        when (item?.itemId) {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
             android.R.id.home -> {
                 onBackPressed()
             }

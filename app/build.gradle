@@ -1,10 +1,9 @@
-apply plugin: 'com.android.application'
-
-apply plugin: 'kotlin-android'
-
-apply plugin: 'kotlin-android-extensions'
-
-apply plugin: 'kotlin-kapt'
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-android-extensions'
+    id 'kotlin-kapt'
+}
 
 android {
     namespace 'code.android.bill.purchases'
@@ -12,10 +11,10 @@ android {
     compileSdkVersion 33
     defaultConfig {
         applicationId "code.android.ngocthai.inappbilling"
-        minSdkVersion 15
+        minSdkVersion 21
         targetSdkVersion 33
-        versionCode 20
-        versionName "20"
+        versionCode 1
+        versionName "1.0.0"
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
@@ -36,7 +35,8 @@ android {
         jvmTarget = '1.8'
     }
     buildFeatures {
-        dataBinding true
+        dataBinding = true
+        viewBinding = true
     }
 
     buildTypes {
@@ -49,19 +49,17 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'com.google.android.material:material:1.6.0'
 
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.7.20"
-    api "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1"
-    api "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.1"
 
     // ViewModel and LiveData
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
-    kapt 'androidx.lifecycle:lifecycle-compiler:2.5.1'
 
     // Room
     implementation 'androidx.room:room-runtime:2.4.3'
@@ -72,7 +70,7 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.2.1'
 
     // Billing
-    implementation "com.android.billingclient:billing:2.0.0"
+    implementation 'com.android.billingclient:billing-ktx:5.1.0'
 
     // Gson
     implementation "com.google.code.gson:gson:2.8.9"
