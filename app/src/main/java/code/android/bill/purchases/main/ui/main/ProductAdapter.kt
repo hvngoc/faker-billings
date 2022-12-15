@@ -1,5 +1,6 @@
 package code.android.bill.purchases.main.ui.main
 
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -19,7 +20,7 @@ class ProductAdapter(
     }
 
     override fun inflateView(parent: ViewGroup, viewType: Int?): View {
-        return TextView(parent.context)// LayoutInflater.from(parent.context).inflate(R.layout.item_product, parent, false)
+        return LayoutInflater.from(parent.context).inflate(R.layout.item_product, parent, false)
     }
 
     override fun bind(rootView: View, item: AugmentedSkuDetails) {

@@ -6,18 +6,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import code.android.bill.purchases.R
 import code.android.bill.purchases.base.ui.common.ListBoundAdapter
 import com.android.billingclient.api.PurchaseHistoryRecord
+import kotlinx.android.synthetic.main.item_history.view.*
 
 class HistoryAdapter : ListBoundAdapter<PurchaseHistoryRecord>(HistoryRecordDiffCallback()) {
 
     override fun inflateView(parent: ViewGroup, viewType: Int?): View {
-        return TextView(parent.context);// LayoutInflater.from(parent.context).inflate(R.layout.item_history, parent, false)
+        return LayoutInflater.from(parent.context).inflate(R.layout.item_history, parent, false)
     }
 
     override fun bind(rootView: View, item: PurchaseHistoryRecord) {
-//        rootView.findViewById<TextView>(R.id.textTitle).text = item.sku
-//        rootView.textTime.text = "Time purchase: ${convertDate(item.purchaseTime)}"
+        rootView.findViewById<TextView>(R.id.textTitle).text = item.originalJson
+        rootView.textTime.text = "Time purchase: ${convertDate(item.purchaseTime)}"
     }
 
     private fun convertDate(timeMilliseconds: Long): String {

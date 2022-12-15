@@ -38,7 +38,7 @@ class BillingRepository private constructor(
     private lateinit var mLocalCacheBillingClient: LocalBillingDb
 
     private val mAugmentedSkuDetails: LiveData<List<AugmentedSkuDetails>> by lazy {
-        if (mLocalCacheBillingClient == null) {
+        if (!::mLocalCacheBillingClient.isInitialized) {
             mLocalCacheBillingClient = LocalBillingDb.getInstance(application.applicationContext)
         }
         mLocalCacheBillingClient.skuDetailsDao().getSkuDetails()
@@ -62,10 +62,10 @@ class BillingRepository private constructor(
     }
 
     override fun onSkuDetailsResponse(
-        billingResult: BillingResult?,
+        billingResult: BillingResult,
         skuDetailsList: MutableList<SkuDetails>?
     ) {
-        billingResult?.let { result ->
+        billingResult.let { result ->
             when (result.responseCode) {
                 BillingClient.BillingResponseCode.OK -> {
                     Log.d(TAG, "onSkuDetailsResponse(): OK")
@@ -87,17 +87,17 @@ class BillingRepository private constructor(
         }
     }
 
-    override fun onBillingSetupFinished(billingResult: BillingResult?) {
-        billingResult?.let {
+    override fun onBillingSetupFinished(billingResult: BillingResult) {
+        billingResult.let {
             when (it.responseCode) {
                 BillingClient.BillingResponseCode.OK -> {
                     Log.d(TAG, "onBillingSetupFinished(): Successfully")
                     resetConnectionRetryPolicyCounter()
                     if (mSkuListInApp.isNotEmpty()) {
-                        querySkuDetailsAsync(BillingClient.SkuType.INAPP, mSkuListInApp)
+                        querySkuDetailsAsync(BillingClient.ProductType.INAPP, mSkuListInApp)
                     }
                     if (mSkuListSubs.isNotEmpty()) {
-                        querySkuDetailsAsync(BillingClient.SkuType.SUBS, mSkuListSubs)
+                        querySkuDetailsAsync(BillingClient.ProductType.SUBS, mSkuListSubs)
                     }
                     queryPurchasesAsync()
                     queryPurchaseHistoryAsync()
@@ -113,10 +113,10 @@ class BillingRepository private constructor(
     }
 
     override fun onPurchasesUpdated(
-        billingResult: BillingResult?,
+        billingResult: BillingResult,
         purchases: MutableList<Purchase>?
     ) {
-        billingResult?.let {
+        billingResult.let {
             when (billingResult.responseCode) {
                 BillingClient.BillingResponseCode.OK -> {
                     // will handle server verification, consumables, and updating the local cache
@@ -138,10 +138,10 @@ class BillingRepository private constructor(
     }
 
     override fun onPurchaseHistoryResponse(
-        billingResult: BillingResult?,
+        billingResult: BillingResult,
         purchaseHistoryRecordList: MutableList<PurchaseHistoryRecord>?
     ) {
-        billingResult?.let {
+        billingResult.let {
             when (it.responseCode) {
                 BillingClient.BillingResponseCode.OK -> {
                     Log.d(
@@ -160,13 +160,13 @@ class BillingRepository private constructor(
         }
     }
 
-    override fun onConsumeResponse(billingResult: BillingResult?, purchaseToken: String?) {
-        billingResult?.let {
+    override fun onConsumeResponse(billingResult: BillingResult, purchaseToken: String) {
+        billingResult.let {
             when (it.responseCode) {
                 BillingClient.BillingResponseCode.OK -> {
                     Log.d(TAG, "onConsumeResponse(): OK")
                     // Update database or ui
-                    purchaseToken?.let { token ->
+                    purchaseToken.let { token ->
                         mConsumePurchaseToken.value = token
                     }
                 }
@@ -194,8 +194,8 @@ class BillingRepository private constructor(
         mBillingClient = BillingClient.newBuilder(application)
             .enablePendingPurchases()
             .setListener(this)
-            .setChildDirected(BillingClient.ChildDirected.CHILD_DIRECTED) /*For use Reward Product*/
-            .setUnderAgeOfConsent(BillingClient.UnderAgeOfConsent.UNDER_AGE_OF_CONSENT) /*For use Reward Product*/
+//            .setChildDirected(BillingClient.ChildDirected.CHILD_DIRECTED) /*For use Reward Product*/
+//            .setUnderAgeOfConsent(BillingClient.UnderAgeOfConsent.UNDER_AGE_OF_CONSENT) /*For use Reward Product*/
             .build()
     }
 
@@ -210,35 +210,44 @@ class BillingRepository private constructor(
     }
 
     fun queryPurchasesAsync() {
-        fun task() {
+        taskExecutionRetryPolicy(mBillingClient, this) {
             Log.d(TAG, "queryPurchasesAsync()")
             val purchasesResult = hashSetOf<Purchase>()
-            var result = mBillingClient.queryPurchases(BillingClient.SkuType.INAPP)
-            Log.d(TAG, "queryPurchasesAsync(): INAPP result:${result.purchasesList.size}")
-            result?.purchasesList?.apply { purchasesResult.addAll(this) }
-            if (isSubscriptionSupported()) {
-                result = mBillingClient.queryPurchases(BillingClient.SkuType.SUBS)
-                result?.purchasesList?.apply { purchasesResult.addAll(this) }
-                Log.d(TAG, "queryPurchasesAsync(): SUBS results:${result?.purchasesList?.size}")
+
+            val params: QueryPurchasesParams =
+                QueryPurchasesParams.newBuilder()
+                    .setProductType(BillingClient.ProductType.INAPP)
+                    .build()
+            mBillingClient.queryPurchasesAsync(params) { p0, purchasesList ->
+                Log.d(TAG, "queryPurchasesAsync(): INAPP result: ${purchasesList.size}")
+                purchasesResult.addAll(purchasesList)
+
+                if (isSubscriptionSupported()) {
+                    val params2: QueryPurchasesParams =
+                        QueryPurchasesParams.newBuilder()
+                            .setProductType(BillingClient.ProductType.SUBS)
+                            .build()
+                    mBillingClient.queryPurchasesAsync(params2) { p1, purchasesList2 ->
+                        Log.d(TAG, "queryPurchasesAsync(): SUBS results:${purchasesList2.size}")
+                        purchasesResult.addAll(purchasesList2)
+                    }
+                    handlePurchases(purchasesResult)
+                }
             }
-
-            handlePurchases(purchasesResult)
         }
-
-        taskExecutionRetryPolicy(mBillingClient, this) { task() }
     }
 
     fun queryPurchaseHistoryAsync() {
         fun task() {
             Log.d(TAG, "queryPurchaseHistoryAsync()")
-            mBillingClient.queryPurchaseHistoryAsync(BillingClient.SkuType.INAPP, this)
-            mBillingClient.queryPurchaseHistoryAsync(BillingClient.SkuType.SUBS, this)
+            mBillingClient.queryPurchaseHistoryAsync(BillingClient.ProductType.INAPP, this)
+            mBillingClient.queryPurchaseHistoryAsync(BillingClient.ProductType.SUBS, this)
         }
 
         taskExecutionRetryPolicy(mBillingClient, this) { task() }
     }
 
-    fun querySkuDetailsAsync(skuType: String, skuList: List<String>) {
+    private fun querySkuDetailsAsync(skuType: String, skuList: List<String>) {
         val params = SkuDetailsParams.newBuilder()
             .setType(skuType)
             .setSkusList(skuList)
@@ -250,12 +259,7 @@ class BillingRepository private constructor(
     }
 
     fun launchBillingFlow(activity: Activity, augmentedSkuDetails: AugmentedSkuDetails) {
-        val skuDetails = SkuDetails(augmentedSkuDetails.originalJson)
-        if (skuDetails.isRewarded) {
-            launchBillingReward(skuDetails)
-        } else {
-            launchBillingFlow(activity, SkuDetails(augmentedSkuDetails.originalJson))
-        }
+        launchBillingFlow(activity, SkuDetails(augmentedSkuDetails.originalJson ?: ""))
     }
 
     fun launchBillingFlow(activity: Activity, skuDetails: SkuDetails) {
@@ -266,16 +270,6 @@ class BillingRepository private constructor(
         taskExecutionRetryPolicy(mBillingClient, this) {
             Log.d(TAG, "launchBillingFlow()")
             mBillingClient.launchBillingFlow(activity, params)
-        }
-    }
-
-    fun launchBillingReward(skuDetail: SkuDetails) {
-        Log.d(TAG, "launchBillingReward()")
-        val params = RewardLoadParams.Builder()
-            .setSkuDetails(skuDetail)
-            .build()
-        mBillingClient.loadRewardedSku(params) {
-            mLoadRewardResponse.value = it
         }
     }
 
@@ -298,7 +292,7 @@ class BillingRepository private constructor(
             // Send purchases to server and save to local database
 
             val (consumables, nonConsumables) = validPurchases.partition {
-                PurchaseConfig.CONSUMABLE_SKUS.contains(it.sku)
+                PurchaseConfig.CONSUMABLE_SKUS.contains(it.orderId)
             }
 
             Log.d(TAG, "handlePurchases(): Consumables content:$consumables")
@@ -331,14 +325,13 @@ class BillingRepository private constructor(
         nonConsumable.forEach { purchase ->
             val params = AcknowledgePurchaseParams.newBuilder()
                 .setPurchaseToken(purchase.purchaseToken)
-                .setDeveloperPayload(purchase.developerPayload)
                 .build()
 
             mBillingClient.acknowledgePurchase(params) { billingResult ->
                 when (billingResult.responseCode) {
                     BillingClient.BillingResponseCode.OK -> {
                         // handle purchase non-consume
-                        mNonConsumePurchaseToken.value = purchase.sku
+                        mNonConsumePurchaseToken.value = purchase.orderId
                     }
                     else -> {
                         Log.d(
@@ -350,7 +343,7 @@ class BillingRepository private constructor(
             }
 
             CoroutineScope(Job() + Dispatchers.IO).launch {
-                mLocalCacheBillingClient.skuDetailsDao().update(purchase.sku, false)
+                mLocalCacheBillingClient.skuDetailsDao().update(purchase.orderId, false)
             }
         }
     }
@@ -391,10 +384,10 @@ class BillingRepository private constructor(
     fun getLoadRewardResponse(): LiveData<BillingResult> = mLoadRewardResponse
 
     private object RetryPolicies {
-        private val maxRetry = 5
+        private const val maxRetry = 5
         private var retryCounter = AtomicInteger(1)
-        private val baseDelayMillis = 500
-        private val taskDelay = 500L
+        private const val baseDelayMillis = 500
+        private const val taskDelay = 500L
 
         fun resetConnectionRetryPolicyCounter() {
             retryCounter.set(1)
